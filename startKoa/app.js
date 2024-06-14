@@ -1,57 +1,59 @@
+// app.js
 const Koa = require("koa");
+const path = require("path");
 const fs = require("fs");
+const static = require("koa-static");
 const Router = require("koa-router");
-const bodyParser = require("koa-bodyparser");
-const session = require("koa-session");
+const { koaBody } = require("koa-body");
 const app = new Koa();
 const router = new Router();
-const Store = require("./store");
-const shortid = require("shortid");
 
-const redisConfig = {
-  redis: {
-    port: 6379,
-    host: "127.0.0.1",
-    password: "",
-  },
-};
+const staticPath = "./static";
 
-const sessionConfig = {
-  // Cookie 键名
-  key: "koa:sess",
-  // 过期时间为一天
-  maxAge: 86400000,
-  // 不做签名
-  signed: false,
-  // 外部存储
-  // ???这个store需要什么类型
-  store: new Store(redisConfig),
-  prefix: "fwy",
-};
-
-app.use(session(sessionConfig, app));
-app.use(bodyParser());
-app.use(router.routes());
-// 用来加载前端页面
-router.get("/", async (ctx) => {
-  ctx.set({ "Content-Type": "text/html" });
-  ctx.body = fs.readFileSync("/Users/suda/Documents/work/project/koa-mock/startKoa/index.html");
-});
-
-// 当用户登录时
-router.post("/login", async (ctx) => {
-  console.log("ctxx", ctx);
-
-  const postData = ctx.request.body; // 获取用户的提交数据
-  if (ctx.session.usr) {
-    ctx.body = `欢迎, ${ctx.session.usr}`;
+// 添加 CORS 中间件
+app.use(async (ctx, next) => {
+  // 允许所有来源访问，也可以根据需要设置特定的来源
+  ctx.set("Access-Control-Allow-Origin", "*");
+  // 允许请求携带的请求头
+  ctx.set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  // 允许请求的方法
+  ctx.set("Access-Control-Allow-Methods", "POST, GET, PUT, DELETE, OPTIONS");
+  // 如果请求方法是 OPTIONS，则直接返回 200，表示接受预检请求
+  if (ctx.method === "OPTIONS") {
+    ctx.status = 200;
   } else {
-    // 他是怎么把sessionid存储到客户端的 应该是koa-session做了处理
-    ctx.session = postData;
-    ctx.body = "您第一次登录系统";
+    // 继续处理其他请求
+    await next();
   }
+});
+// post请求 解析body
+app.use(
+  koaBody({
+    multipart: true,
+    formidable: {
+      maxFileSize: 200 * 1024 * 1024, // 设置上传文件的限制, 默认2MB
+    },
+  })
+);
+
+app.use(static(path.join(__dirname, staticPath)));
+
+app.use(router.routes());
+
+router.post("/upload", async (ctx) => {
+  // 获取文件对象
+
+  // 为什么在这里获取？
+  // 疑问 ctx.request是什么类型对象
+  const file = ctx.request.files.file;
+
+  // 读取文件内容
+  const data = fs.readFileSync(file.filepath);
+  // 保存到服务端
+  fs.writeFileSync(path.join(__dirname, file.originalFilename), data);
+  ctx.body = { message: "上传成功！" };
 });
 
 app.listen(4000, () => {
-  console.log("server is running, port is 4000");
+  console.log("server is running, http://localhost:4000");
 });
