@@ -1,0 +1,17 @@
+<!-- download.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>下载</title>
+  </head>
+  <body>
+    <button onclick="handleClick()">立即下载</button>
+  </body>
+  <script>
+    const filename = "Snipaste_2024-06-14_15-24-02.png";
+    const handleClick = () => {
+      window.open(`http://localhost:4000/download/${filename}`);
+    };
+  </script>
+</html>

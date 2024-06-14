@@ -7,6 +7,7 @@ const Router = require("koa-router");
 const { koaBody } = require("koa-body");
 const app = new Koa();
 const router = new Router();
+const send = require("koa-send");
 
 const staticPath = "./static";
 
@@ -45,6 +46,7 @@ router.post("/upload", async (ctx) => {
 
   // 为什么在这里获取？
   // 疑问 ctx.request是什么类型对象
+  // 以为 ctx是什么。。怎么进行封装的。。
   const file = ctx.request.files.file;
 
   // 读取文件内容
@@ -52,6 +54,20 @@ router.post("/upload", async (ctx) => {
   // 保存到服务端
   fs.writeFileSync(path.join(__dirname, file.originalFilename), data);
   ctx.body = { message: "上传成功！" };
+});
+
+router.get("/download/:name", async (ctx) => {
+  const name = ctx.params.name;
+  const path = `${name}`;
+  ctx.attachment(path);
+  const options = {
+    root: __dirname,
+    maxage: 3600000, // 设置文件在浏览器缓存中的最大时间为一小时 1小时内发送相同的请求，浏览器缓存直接回复，节约服务器资源
+    immutable: true, // 资源不可变，可以永久缓存（只要maxage不为0）
+    hidden: false,
+  };
+
+  await send(ctx, path, options);
 });
 
 app.listen(4000, () => {
