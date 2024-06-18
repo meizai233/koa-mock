@@ -1,0 +1,61 @@
+// static/index.html
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>index</title>
+  </head>
+  <body>
+    <button onclick="welcome()">进入系统欢迎页面</button>
+    <button onclick="login()">登录</button>
+    <p></p>
+  </body>
+  <script>
+    function welcome() {
+      // 前端流程：
+      // 从本地缓存拿到token 给到headers的authorization Bearer开头
+      // 如果返回401 认证失败
+      const token = localStorage.getItem("token");
+      fetch("/welcome", {
+        method: "GET",
+        headers: {
+          authorization: "Bearer " + token,
+          "content-type": "application/json",
+        },
+      })
+        .then((response) => {
+          if (response.status === 401) {
+            alert("无权限！需要先登录");
+          } else {
+            return response.json();
+          }
+        })
+        .then((json) => {
+          document.querySelector("p").innerHTML = JSON.stringify(json);
+        });
+    }
+    // 登录流程
+    // 用户名密码，或许需要加密？请求接口
+    // 得到结果
+    function login() {
+      fetch("/login", {
+        method: "POST",
+        // 密码去哪里了 疑问
+        body: JSON.stringify({
+          userName: "liujianghong",
+        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      })
+        .then((response) => response.json())
+        .then((json) => {
+          if (json.token) {
+            // 存到body
+            localStorage.setItem("token", json.token);
+            alert("登录成功");
+          }
+        });
+    }
+  </script>
+</html>
