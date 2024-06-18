@@ -1,29 +1,53 @@
-const Koa = require("koa");
-const Router = require("koa-router");
+"use strict";
 
-const app = new Koa();
-const router = new Router();
+/**
+ * Expose compositor.
+ */
 
-// 定义路由
-router.get("/", async (ctx) => {
-  ctx.body = "Hello, world!";
-});
+module.exports = compose;
 
-router.get("/about", async (ctx) => {
-  ctx.body = "About us page";
-});
+/**
+ * Compose `middleware` returning
+ * a fully valid middleware comprised
+ * of all those which are passed.
+ *
+ * @param {Array} middleware
+ * @return {Function}
+ * @api public
+ */
 
-router.get("/users/:id", async (ctx) => {
-  const userId = ctx.params.id;
-  ctx.body = `User ID: ${userId}`;
-});
+// 组合中间件
+function compose(middleware) {
+  // 规定格式为函数数组
+  if (!Array.isArray(middleware)) throw new TypeError("Middleware stack must be an array!");
+  for (const fn of middleware) {
+    if (typeof fn !== "function") throw new TypeError("Middleware must be composed of functions!");
+  }
 
-// 注册路由中间件
-app.use(router.routes());
-app.use(router.allowedMethods());
+  /**
+   * @param {Object} context
+   * @return {Promise}
+   * @api public
+   */
 
-// 启动服务器
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+  // 这个next从哪里传的
+  return function (context, next) {
+    // last called middleware #
+    let index = -1;
+
+    // 执行完0的结果？是否调试一边更好
+    return dispatch(0);
+    function dispatch(i) {
+      if (i <= index) return Promise.reject(new Error("next() called multiple times"));
+      index = i;
+      let fn = middleware[i];
+      if (i === middleware.length) fn = next;
+      if (!fn) return Promise.resolve();
+      try {
+        return Promise.resolve(fn(context, dispatch.bind(null, i + 1)));
+      } catch (err) {
+        return Promise.reject(err);
+      }
+    }
+  };
+}
